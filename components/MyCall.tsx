@@ -107,20 +107,13 @@ export default function MyCall({ callId }: { callId: string }): JSX.Element {
   }
 
   async function createTranscriber(): Promise<RealtimeTranscriber | undefined> {
-    const assemblyAIApiKey = process.env.NEXT_PUBLIC_ASSEMBLY_API_KEY;
-
-    if (!assemblyAIApiKey) {
-      console.error('No AssemblyAI API key found');
-      return;
-    }
-    console.info(assemblyAIApiKey);
-    const client = new AssemblyAI({
-      apiKey: process.env.ASSEMBLYAI_API_KEY!,
-    });
-
     const token = await getAssemblyToken();
     console.log('Assembly token: ', token);
-    const transcriber = client.realtime.transcriber({
+    if (!token) {
+      console.error('No token found');
+      return;
+    }
+    const transcriber = new RealtimeTranscriber({
       sampleRate: 16_000,
       token: token,
       //   wordBoost: ['Custom Keyword for Triggering LLM']
