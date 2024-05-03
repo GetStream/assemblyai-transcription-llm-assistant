@@ -9,7 +9,7 @@ export async function GET() {
   const assemblyClient = new AssemblyAI({ apiKey: apiKey });
 
   const token = await assemblyClient.realtime.createTemporaryToken({
-    expires_in: 3_600_000,
+    expires_in: 3_600_000_000,
   });
 
   const response = {

@@ -21,6 +21,9 @@ export default function CallLayout(): JSX.Element {
   const [transcribedText, setTranscribedText] = useState<string>('');
   const [robotActive, setRobotActive] = useState<boolean>(false);
   const [llamaActive, setLlamaActive] = useState<boolean>(false);
+  const [prompt, setPrompt] = useState<string>('');
+  const [processingPrompt, setProcessingPrompt] = useState<boolean>(false);
+  const [llamaResponse, setLlamaResponse] = useState<string>('');
   const [transcriber, setTranscriber] = useState<
     RealtimeTranscriber | undefined
   >(undefined);
@@ -42,7 +45,8 @@ export default function CallLayout(): JSX.Element {
     async function initializeAssemblyAI() {
       const transcriber = await createTranscriber(
         setTranscribedText,
-        setLlamaActive
+        setLlamaActive,
+        setPrompt
       );
 
       if (!transcriber) {
@@ -67,16 +71,40 @@ export default function CallLayout(): JSX.Element {
     [mediaStream]
   );
 
-  useEffect(() => {
-    // const mic = initializeAssemblyAI().then(() => {
-    //   console.log('Initialized Assembly AI');
-    // });
+  const processPrompt = useCallback(
+    async function processPrompt(prompt: string) {
+      if (!processingPrompt) {
+        setProcessingPrompt(true);
+        const response = await fetch('/api/lemurRequest', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt: prompt }),
+        });
 
-    return () => {
-      // dispose assembly
-      // mic.stopRecording();
-    };
-  }, [initializeAssemblyAI]);
+        const responseBody = await response.json();
+        const lemurResponse = responseBody.response;
+        console.log(lemurResponse);
+        setLlamaResponse(lemurResponse);
+        setProcessingPrompt(false);
+
+        setTimeout(() => {
+          setLlamaResponse('');
+        }, 5000);
+      }
+    },
+    [processingPrompt]
+  );
+
+  useEffect(() => {
+    if (!llamaActive) {
+      console.info('Prompt input is done.');
+      console.info('Prompt: ', prompt);
+      if (prompt.length > 0) {
+        processPrompt(prompt);
+      }
+      setPrompt('');
+    }
+  }, [llamaActive, prompt, processPrompt]);
 
   useEffect(() => {
     if (robotActive) {
@@ -107,6 +135,11 @@ export default function CallLayout(): JSX.Element {
       <h2>Participants: {participantCount}</h2>
       <div className='relative overflow-hidden rounded-xl'>
         <SpeakerLayout participantsBarPosition='bottom' />
+        {llamaResponse && (
+          <div className='absolute top-4 right-4 bg-white text-black p-2 rounded-lg shadow-md'>
+            {llamaResponse}
+          </div>
+        )}
         <div className='flex items-center justify-center w-full absolute bottom-2'>
           <h3 className='text-white text-center bg-black rounded-xl px-6 py-1'>
             {transcribedText}
@@ -124,7 +157,7 @@ export default function CallLayout(): JSX.Element {
             width={200}
             height={200}
             alt='llama'
-            className=''
+            className='relative'
           />
         </div>
       </div>

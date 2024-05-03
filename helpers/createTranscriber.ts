@@ -4,7 +4,8 @@ import { Dispatch, SetStateAction } from 'react';
 
 export async function createTranscriber(
   setTranscribedText: Dispatch<SetStateAction<string>>,
-  setLlamaActive: Dispatch<SetStateAction<boolean>>
+  setLlamaActive: Dispatch<SetStateAction<boolean>>,
+  setPrompt: Dispatch<SetStateAction<string>>
 ): Promise<RealtimeTranscriber | undefined> {
   const token = await getAssemblyToken();
   console.log('Assembly token: ', token);
@@ -38,14 +39,14 @@ export async function createTranscriber(
   const texts: any = {};
   transcriber.on('transcript', (transcript: RealtimeTranscript) => {
     if (!transcript.text) {
-      console.error('Transcript is empty');
+      //   console.error('Transcript is empty');
       return;
     }
 
     // Detect if we're asking something for the LLM
     if (transcript.text.toLowerCase().indexOf('llama') > 0) {
-      console.info('[Transcript] Llama detected: ', transcript.text);
       setLlamaActive(true);
+      setPrompt(transcript.text);
     } else {
       setLlamaActive(false);
     }
@@ -61,10 +62,11 @@ export async function createTranscriber(
         }
       }
 
-      // console.log('Msg: ', msg);
-      setTranscribedText(transcript.text);
+      //   console.log('[Transcript] Msg: ', msg);
+      //   setTranscribedText(transcript.text);
     } else {
-      //   console.log('[Transcript] Final:', transcript.text);
+      console.log('[Transcript] Final:', transcript.text);
+      setTranscribedText(transcript.text);
     }
   });
 
