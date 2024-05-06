@@ -89,7 +89,7 @@ export default function CallLayout(): JSX.Element {
 
         setTimeout(() => {
           setLlamaResponse('');
-        }, 5000);
+        }, 7000);
       }
     },
     [processingPrompt]
@@ -97,9 +97,8 @@ export default function CallLayout(): JSX.Element {
 
   useEffect(() => {
     if (!llamaActive) {
-      console.info('Prompt input is done.');
-      console.info('Prompt: ', prompt);
       if (prompt.length > 0) {
+        console.info('Prompt: ', prompt);
         processPrompt(prompt);
       }
       setPrompt('');
@@ -107,7 +106,7 @@ export default function CallLayout(): JSX.Element {
   }, [llamaActive, prompt, processPrompt]);
 
   useEffect(() => {
-    if (robotActive) {
+    if (robotActive && !transcriber && !mic) {
       console.log('Robot is active');
       initializeAssemblyAI().then(() => {
         console.log('Initialized Assembly AI');
@@ -136,7 +135,7 @@ export default function CallLayout(): JSX.Element {
       <div className='relative overflow-hidden rounded-xl'>
         <SpeakerLayout participantsBarPosition='bottom' />
         {llamaResponse && (
-          <div className='absolute top-4 right-4 bg-white text-black p-2 rounded-lg shadow-md'>
+          <div className='absolute mx-8 top-4 right-4 bg-white text-black p-2 rounded-lg shadow-md'>
             {llamaResponse}
           </div>
         )}

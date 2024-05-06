@@ -46,7 +46,10 @@ export async function createTranscriber(
     // Detect if we're asking something for the LLM
     if (transcript.text.toLowerCase().indexOf('llama') > 0) {
       setLlamaActive(true);
-      setPrompt(transcript.text);
+      // TODO: temporary: add stop word to prevent multiple prompts
+      if (transcript.text.toLowerCase().indexOf('stop') > 0) {
+        setPrompt(transcript.text);
+      }
     } else {
       setLlamaActive(false);
     }
