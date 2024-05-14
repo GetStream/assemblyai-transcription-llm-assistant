@@ -21,8 +21,6 @@ export default function CallLayout(): JSX.Element {
   const [transcribedText, setTranscribedText] = useState<string>('');
   const [robotActive, setRobotActive] = useState<boolean>(false);
   const [llamaActive, setLlamaActive] = useState<boolean>(false);
-  const [prompt, setPrompt] = useState<string>('');
-  const [processingPrompt, setProcessingPrompt] = useState<boolean>(false);
   const [llamaResponse, setLlamaResponse] = useState<string>('');
   const [transcriber, setTranscriber] = useState<
     RealtimeTranscriber | undefined
@@ -34,6 +32,7 @@ export default function CallLayout(): JSX.Element {
       }
     | undefined
   >(undefined);
+
   // Collecting data from the Stream SDK using hooks
   const { useCallCallingState, useParticipantCount, useMicrophoneState } =
     useCallStateHooks();
@@ -41,12 +40,34 @@ export default function CallLayout(): JSX.Element {
   const callingState = useCallCallingState();
   const { mediaStream } = useMicrophoneState();
 
+  const processPrompt = useCallback(async function processPrompt(
+    prompt: string
+  ) {
+    const response = await fetch('/api/lemurRequest', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt: prompt }),
+    });
+
+    const responseBody = await response.json();
+    const lemurResponse = responseBody.response;
+    console.log(lemurResponse);
+    setLlamaResponse(lemurResponse);
+
+    setTimeout(() => {
+      setLlamaResponse('');
+      setLlamaActive(false);
+      setTranscribedText('');
+    }, 7000);
+  },
+  []);
+
   const initializeAssemblyAI = useCallback(
     async function initializeAssemblyAI() {
       const transcriber = await createTranscriber(
         setTranscribedText,
         setLlamaActive,
-        setPrompt
+        processPrompt
       );
 
       if (!transcriber) {
@@ -68,58 +89,8 @@ export default function CallLayout(): JSX.Element {
       setMic(mic);
       setTranscriber(transcriber);
     },
-    [mediaStream]
+    [mediaStream, processPrompt]
   );
-
-  const processPrompt = useCallback(
-    async function processPrompt(prompt: string) {
-      if (!processingPrompt) {
-        setProcessingPrompt(true);
-        const response = await fetch('/api/lemurRequest', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ prompt: prompt }),
-        });
-
-        const responseBody = await response.json();
-        const lemurResponse = responseBody.response;
-        console.log(lemurResponse);
-        setLlamaResponse(lemurResponse);
-        setProcessingPrompt(false);
-
-        setTimeout(() => {
-          setLlamaResponse('');
-        }, 7000);
-      }
-    },
-    [processingPrompt]
-  );
-
-  useEffect(() => {
-    if (!llamaActive) {
-      if (prompt.length > 0) {
-        console.info('Prompt: ', prompt);
-        processPrompt(prompt);
-      }
-      setPrompt('');
-    }
-  }, [llamaActive, prompt, processPrompt]);
-
-  useEffect(() => {
-    if (robotActive && !transcriber && !mic) {
-      console.log('Robot is active');
-      initializeAssemblyAI().then(() => {
-        console.log('Initialized Assembly AI');
-      });
-    } else {
-      if (mic) {
-        mic.stopRecording();
-        transcriber?.close(false);
-        setMic(undefined);
-        setTranscriber(undefined);
-      }
-    }
-  }, [robotActive, initializeAssemblyAI, mic, transcriber]);
 
   if (callingState !== CallingState.JOINED) {
     return (
@@ -162,10 +133,7 @@ export default function CallLayout(): JSX.Element {
       </div>
       <div className='flex items-center justify-between mx-4'>
         <CallControls />
-        <button
-          className='ml-8'
-          onClick={() => setRobotActive((currentValue) => !currentValue)}
-        >
+        <button className='ml-8' onClick={() => switchRobot(robotActive)}>
           <Image
             src={robotImage}
             width={50}
@@ -179,4 +147,20 @@ export default function CallLayout(): JSX.Element {
       </div>
     </StreamTheme>
   );
+
+  async function switchRobot(isActive: boolean) {
+    if (isActive) {
+      console.log('Robot is active');
+      mic?.stopRecording();
+      await transcriber?.close(false);
+      setMic(undefined);
+      setTranscriber(undefined);
+      setRobotActive(false);
+    } else {
+      console.log('Robot is inactive');
+      await initializeAssemblyAI();
+      console.log('Initialized Assembly AI');
+      setRobotActive(true);
+    }
+  }
 }
