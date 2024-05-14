@@ -1,6 +1,6 @@
 import { AssemblyAI } from 'assemblyai';
 
-export async function GET() {
+export async function POST() {
   const apiKey = process.env.ASSEMBLY_API_KEY;
   if (!apiKey) {
     return Response.error();
