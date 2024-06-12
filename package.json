@@ -11,7 +11,6 @@
   "dependencies": {
     "@stream-io/node-sdk": "^0.1.13",
     "@stream-io/video-react-sdk": "^0.6.10",
-    "assemblyai": "^4.4.1",
     "next": "14.2.2",
     "react": "^18",
     "react-dom": "^18"
