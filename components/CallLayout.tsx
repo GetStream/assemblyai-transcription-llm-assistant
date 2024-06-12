@@ -106,7 +106,7 @@ export default function CallLayout(): JSX.Element {
       <div className='relative overflow-hidden rounded-xl'>
         <SpeakerLayout participantsBarPosition='bottom' />
         {llamaResponse && (
-          <div className='absolute mx-8 top-4 right-4 bg-white text-black p-2 rounded-lg shadow-md'>
+          <div className='absolute mx-8 top-8 right-8 bg-white text-black p-4 rounded-lg shadow-md'>
             {llamaResponse}
           </div>
         )}
