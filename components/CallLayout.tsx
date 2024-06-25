@@ -11,7 +11,7 @@ import {
   CallControls,
 } from '@stream-io/video-react-sdk';
 import '@stream-io/video-react-sdk/dist/css/styles.css';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import robotImage from '../assets/robot.png';
 import llamaImage from '../assets/llama.png';
 import { RealtimeTranscriber } from 'assemblyai';
@@ -19,9 +19,9 @@ import { RealtimeTranscriber } from 'assemblyai';
 export default function CallLayout(): JSX.Element {
   // Text to display what is transcribed from AssemblyAI
   const [transcribedText, setTranscribedText] = useState<string>('');
+  const [llmActive, setLllmActive] = useState<boolean>(false);
+  const [llmResponse, setLlmResponse] = useState<string>('');
   const [robotActive, setRobotActive] = useState<boolean>(false);
-  const [llamaActive, setLlamaActive] = useState<boolean>(false);
-  const [llamaResponse, setLlamaResponse] = useState<string>('');
   const [transcriber, setTranscriber] = useState<
     RealtimeTranscriber | undefined
   >(undefined);
@@ -40,9 +40,7 @@ export default function CallLayout(): JSX.Element {
   const callingState = useCallCallingState();
   const { mediaStream } = useMicrophoneState();
 
-  const processPrompt = useCallback(async function processPrompt(
-    prompt: string
-  ) {
+  const processPrompt = useCallback(async (prompt: string) => {
     const response = await fetch('/api/lemurRequest', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -52,45 +50,40 @@ export default function CallLayout(): JSX.Element {
     const responseBody = await response.json();
     const lemurResponse = responseBody.response;
     console.log(lemurResponse);
-    setLlamaResponse(lemurResponse);
+    setLlmResponse(lemurResponse);
 
     setTimeout(() => {
-      setLlamaResponse('');
-      setLlamaActive(false);
+      setLlmResponse('');
+      setLllmActive(false);
       setTranscribedText('');
     }, 7000);
-  },
-  []);
+  }, []);
 
-  const initializeAssemblyAI = useCallback(
-    async function initializeAssemblyAI() {
-      const transcriber = await createTranscriber(
-        setTranscribedText,
-        setLlamaActive,
-        processPrompt
-      );
+  const initializeAssemblyAI = useCallback(async () => {
+    const transcriber = await createTranscriber(
+      setTranscribedText,
+      setLllmActive,
+      processPrompt
+    );
 
-      if (!transcriber) {
-        console.error('Transcriber is not created');
-        return;
-      }
-      await transcriber.connect();
+    if (!transcriber) {
+      console.error('Transcriber is not created');
+      return;
+    }
+    await transcriber.connect();
 
-      if (!mediaStream) {
-        console.error('No media stream found');
-        return;
-      }
-      const mic = createMicrophone(mediaStream);
-      console.log('Mic: ', mic, ', starting recording');
-      mic.startRecording((audioData: any) => {
-        // console.log('[Option 2] Audio data: ', audioData);
-        transcriber.sendAudio(audioData);
-      });
-      setMic(mic);
-      setTranscriber(transcriber);
-    },
-    [mediaStream, processPrompt]
-  );
+    if (!mediaStream) {
+      console.error('No media stream found');
+      return;
+    }
+    const mic = createMicrophone(mediaStream);
+    console.log('Mic: ', mic, ', starting recording');
+    mic.startRecording((audioData: any) => {
+      transcriber.sendAudio(audioData);
+    });
+    setMic(mic);
+    setTranscriber(transcriber);
+  }, [mediaStream, processPrompt]);
 
   if (callingState !== CallingState.JOINED) {
     return (
@@ -105,9 +98,9 @@ export default function CallLayout(): JSX.Element {
       <h2>Participants: {participantCount}</h2>
       <div className='relative overflow-hidden rounded-xl'>
         <SpeakerLayout participantsBarPosition='bottom' />
-        {llamaResponse && (
+        {llmResponse && (
           <div className='absolute mx-8 top-8 right-8 bg-white text-black p-4 rounded-lg shadow-md'>
-            {llamaResponse}
+            {llmResponse}
           </div>
         )}
         <div className='flex items-center justify-center w-full absolute bottom-2'>
@@ -117,7 +110,7 @@ export default function CallLayout(): JSX.Element {
         </div>
         <div
           className={`absolute transition ease-in-out duration-300 bottom-1 right-4 ${
-            llamaActive
+            llmActive
               ? 'translate-x-0 translate-y-0 opacity-100'
               : 'translate-x-60 translate-y-60 opacity-0'
           }`}
