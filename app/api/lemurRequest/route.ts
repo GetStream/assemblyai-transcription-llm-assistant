@@ -14,12 +14,16 @@ export async function POST(request: Request) {
   if (!prompt) {
     return Response.error();
   }
-  const initialPrompt =
-    'You act as an assistant during a video call. You get a question and I want you to answer it directly without repeating it. If you do not know the answer, clearly state that.';
+
+  const finalPrompt = `You act as an assistant during a video call. You get a question and I want you to answer it directly without repeating it.
+  If you do not know the answer, clearly state that.
+  Here is the user question:
+  ${prompt}`;
+
   const lemurResponse = await client.lemur.task({
-    prompt: initialPrompt,
-    // My first prompt idea: 'You act as an assistant during a video call. You get a question and I want you to answer it directly without repeating it. If you do not know the answer, clearly state that.',
-    input_text: prompt,
+    prompt: finalPrompt,
+    input_text: 'This is a conversation during a video call.',
+    // TODO: For now we just give some context, but here we could add the actual meeting text.
   });
 
   const response = {
