@@ -11,7 +11,7 @@ import {
   CallControls,
 } from '@stream-io/video-react-sdk';
 import '@stream-io/video-react-sdk/dist/css/styles.css';
-import { useCallback, useState } from 'react';
+import { use, useCallback, useState } from 'react';
 import robotImage from '../assets/robot.png';
 import llamaImage from '../assets/llama.png';
 import { RealtimeTranscriber } from 'assemblyai';
@@ -32,6 +32,7 @@ export default function CallLayout(): JSX.Element {
       }
     | undefined
   >(undefined);
+  const [fullTranscription, setFullTranscription] = useState<string[]>([]);
 
   // Collecting data from the Stream SDK using hooks
   const { useCallCallingState, useParticipantCount, useMicrophoneState } =
@@ -44,7 +45,10 @@ export default function CallLayout(): JSX.Element {
     const response = await fetch('/api/lemurRequest', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt: prompt }),
+      body: JSON.stringify({
+        prompt: prompt,
+        fullTranscription: fullTranscription.join('/n'),
+      }),
     });
 
     const responseBody = await response.json();
@@ -61,7 +65,7 @@ export default function CallLayout(): JSX.Element {
 
   const initializeAssemblyAI = useCallback(async () => {
     const transcriber = await createTranscriber(
-      setTranscribedText,
+      transcriptionProcessed,
       setLllmActive,
       processPrompt
     );
@@ -154,6 +158,13 @@ export default function CallLayout(): JSX.Element {
       await initializeAssemblyAI();
       console.log('Initialized Assembly AI');
       setRobotActive(true);
+    }
+  }
+
+  function transcriptionProcessed(text: string, isFinal: boolean) {
+    setTranscribedText(text);
+    if (isFinal) {
+      setFullTranscription((prev) => [...prev, text]);
     }
   }
 }

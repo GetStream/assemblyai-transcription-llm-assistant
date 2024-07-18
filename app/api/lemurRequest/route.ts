@@ -10,6 +10,7 @@ export async function POST(request: Request) {
   const body = await request.json();
 
   const prompt = body?.prompt;
+  const fullTranscript = body?.fullTranscription;
 
   if (!prompt) {
     return Response.error();
@@ -22,7 +23,7 @@ export async function POST(request: Request) {
 
   const lemurResponse = await client.lemur.task({
     prompt: finalPrompt,
-    input_text: 'This is a conversation during a video call.',
+    input_text: 'This is a conversation during a video call. Here is the history of the call so far: ' + fullTranscript,
     // TODO: For now we just give some context, but here we could add the actual meeting text.
   });
 

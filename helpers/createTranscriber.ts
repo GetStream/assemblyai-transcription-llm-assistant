@@ -3,7 +3,7 @@ import { getAssemblyToken } from './getAssemblyToken';
 import { Dispatch, SetStateAction } from 'react';
 
 export async function createTranscriber(
-  setTranscribedText: Dispatch<SetStateAction<string>>,
+  transcriptionProcessed: (transcription: string, isFinal: boolean) => void,
   setLlamaActive: Dispatch<SetStateAction<boolean>>,
   processPrompt: (prompt: string) => void
 ): Promise<RealtimeTranscriber | undefined> {
@@ -59,10 +59,11 @@ export async function createTranscriber(
         }
       }
       console.log('[Transcript] Msg: ', msg);
-      setTranscribedText(transcript.text);
+      transcriptionProcessed(transcript.text, false);
     } else {
       console.log('[Transcript] Final:', transcript.text);
-      setTranscribedText(transcript.text);
+      transcriptionProcessed(transcript.text, true);
+
       if (transcript.text.toLowerCase().indexOf('llama') > 0) {
         console.log('Setting prompt to: ', transcript.text);
         processPrompt(transcript.text);
