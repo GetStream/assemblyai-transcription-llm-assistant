@@ -14,7 +14,6 @@ export async function POST(request: Request) {
 
   const serverClient = new StreamClient(apiKey, streamSecret);
   const body = await request.json();
-  console.log('[/api/token] Body:', body);
 
   const userId = body?.userId;
 
