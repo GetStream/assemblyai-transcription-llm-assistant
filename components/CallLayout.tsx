@@ -11,7 +11,7 @@ import {
   CallControls,
 } from '@stream-io/video-react-sdk';
 import '@stream-io/video-react-sdk/dist/css/styles.css';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import robotImage from '../assets/robot.png';
 import llamaImage from '../assets/llama.png';
 import { RealtimeTranscriber } from 'assemblyai';
@@ -32,84 +32,47 @@ export default function CallLayout(): JSX.Element {
       }
     | undefined
   >(undefined);
-  const [fullTranscription, setFullTranscription] = useState<Array<string>>(
-    new Array()
-  );
+  const fullTranscriptionRef = useRef<Array<string>>(new Array());
 
   // Collecting data from the Stream SDK using hooks
-  const {
-    useCallCallingState,
-    useParticipantCount,
-    useMicrophoneState,
-    useRemoteParticipants,
-  } = useCallStateHooks();
+  const { useCallCallingState, useParticipantCount, useMicrophoneState } =
+    useCallStateHooks();
   const participantCount = useParticipantCount();
   const callingState = useCallCallingState();
   const { mediaStream } = useMicrophoneState();
-  const remote = useRemoteParticipants();
 
-  const processPrompt = useCallback(
-    async (prompt: string) => {
-      console.log('Full transcription: ', fullTranscription);
-      const combinedTranscript = fullTranscription.join(' ');
-      console.log('Combined transcription: ', combinedTranscript);
-      const response = await fetch('/api/lemurRequest', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          prompt: prompt,
-          fullTranscription: combinedTranscript,
-        }),
-      });
+  const processPrompt = useCallback(async (prompt: string) => {
+    const combinedTranscript = fullTranscriptionRef.current.join(' ');
+    const response = await fetch('/api/lemurRequest', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        prompt: prompt,
+        fullTranscription: combinedTranscript,
+      }),
+    });
 
-      const responseBody = await response.json();
-      const lemurResponse = responseBody.response;
-      console.log(lemurResponse);
-      setLlmResponse(lemurResponse);
+    const responseBody = await response.json();
+    const lemurResponse = responseBody.response;
+    console.log(lemurResponse);
+    setLlmResponse(lemurResponse);
 
-      setTimeout(() => {
-        setLlmResponse('');
-        setLllmActive(false);
-        setTranscribedText('');
-      }, 7000);
-    },
-    [fullTranscription]
-  );
+    setTimeout(() => {
+      setLlmResponse('');
+      setLllmActive(false);
+      setTranscribedText('');
+    }, 7000);
+  }, []);
 
   const transcriptionProcessed = useCallback(
     (text: string, isFinal: boolean) => {
       setTranscribedText(text);
       if (isFinal) {
-        setFullTranscription((prev) => [...prev, text]);
+        fullTranscriptionRef.current = [...fullTranscriptionRef.current, text];
       }
     },
     []
   );
-
-  useEffect(() => {
-    remote.forEach(async (participant) => {
-      const transcriber = await createTranscriber(
-        transcriptionProcessed,
-        setLllmActive,
-        processPrompt
-      );
-
-      if (!transcriber) {
-        console.error('Transcriber is not created');
-        return;
-      }
-      await transcriber.connect();
-      const { audioStream, userId } = participant;
-      if (audioStream) {
-        const mic = createMicrophone(audioStream);
-        mic.startRecording((audioData: any) => {
-          transcriber?.sendAudio(audioData);
-        });
-        setMic(mic);
-        setTranscriber(transcriber);
-      }
-    });
-  }, [remote, transcriber, transcriptionProcessed, processPrompt]);
 
   const initializeAssemblyAI = useCallback(async () => {
     const transcriber = await createTranscriber(
@@ -135,10 +98,6 @@ export default function CallLayout(): JSX.Element {
     setMic(mic);
     setTranscriber(transcriber);
   }, [mediaStream, processPrompt, transcriptionProcessed]);
-
-  useEffect(() => {
-    console.log('[⚠️] UPDATE: ', fullTranscription);
-  }, [fullTranscription]);
 
   if (callingState !== CallingState.JOINED) {
     return (
@@ -198,14 +157,12 @@ export default function CallLayout(): JSX.Element {
 
   async function switchRobot(isActive: boolean) {
     if (isActive) {
-      console.log('Robot is active');
       mic?.stopRecording();
       await transcriber?.close(false);
       setMic(undefined);
       setTranscriber(undefined);
       setRobotActive(false);
     } else {
-      console.log('Robot is inactive');
       await initializeAssemblyAI();
       console.log('Initialized Assembly AI');
       setRobotActive(true);
